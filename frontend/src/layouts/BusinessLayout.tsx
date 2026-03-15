@@ -77,7 +77,7 @@ export default function BusinessLayout() {
                                 href: "#",
                                 icon: <LogOut className="h-5 w-5 flex-shrink-0" />
                             }}
-                            className="text-[#64748B] hover:text-red-500 hover:bg-red-50 transition-colors"
+                            className="text-[#64748B] hover:text-white hover:bg-red-600 transition-colors"
                         />
                     </div>
                 </SidebarBody>
@@ -109,7 +109,7 @@ const Logo = () => {
                 animate={{ opacity: 1 }}
                 className="font-black text-xl tracking-tight whitespace-pre text-[#0F172A]"
             >
-                Udhyaam<span className="text-[#1E40AF]">OS</span>
+                Udhyaam<span className="text-[#1E40AF]"> BUSINESS</span>
             </motion.span>
         </Link>
     );

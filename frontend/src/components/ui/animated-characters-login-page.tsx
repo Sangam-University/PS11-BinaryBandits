@@ -485,11 +485,11 @@ export default function AnimatedCharactersLoginPage() {
             <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Sparkles className="size-4 text-primary" />
             </div>
-            <span>Udyaam</span>
+            <span>Udyaam</span>   
           </div>
 
           <div className="text-center mb-10">
-            <h1 className={cn("text-3xl font-bold tracking-tight mb-2", !isJunior && "text-[#0F172A]")}>
+            <h1 className={cn("text-4xl font-bold tracking-tight mb-2", !isJunior && "text-[#0F172A]")}>
               {isLoginMode ? "Welcome Back!" : "Create an Account"}
             </h1>
             <p className={cn("text-sm", isJunior ? "text-white/60" : "text-[#64748B]")}>
