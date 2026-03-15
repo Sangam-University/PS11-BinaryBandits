@@ -725,3 +725,14 @@ export const uploadFile = async (file: File, type: 'avatar' | 'submission' | 'sc
     });
     return res.data.url;
 };
+
+// ===================== REAL BACKEND — AI =====================
+export const aiGetMatchPercentage = async (bountyId: string): Promise<{ percentage: number; reason: string }> => {
+    const res = await api.post('/ai/match-percentage', { bountyId });
+    return res.data;
+};
+
+export const aiFindBestMatch = async (bountyId: string): Promise<{ rankings: Array<{ studentId: string; percentage: number; reason: string }>; bestMatchId: string }> => {
+    const res = await api.post('/ai/best-match', { bountyId });
+    return res.data;
+};

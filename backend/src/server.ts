@@ -12,6 +12,7 @@ import bountyRoutes from './routes/bounties.js';
 import uploadRoutes from './routes/upload.js';
 import chatRoutes from './routes/chats.js';
 import feedRoutes from './routes/feed.js';
+import aiRoutes from './routes/ai.js';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api/bounties', bountyRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/feed', feedRoutes);
+app.use('/api/ai', aiRoutes);
 
 // --------------- Error Handler ---------------
 app.use(errorHandler);

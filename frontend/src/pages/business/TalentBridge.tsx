@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useBountyStore } from "../../store/useBountyStore";
-import { Plus, Briefcase, Clock, CheckCircle2, AlertCircle, ArrowUpRight, MessageSquare, Send, ShieldCheck, RotateCcw, Star, DollarSign, FileText, Filter, Timer, TrendingUp } from "lucide-react";
+import { Plus, Briefcase, Clock, CheckCircle2, AlertCircle, ArrowUpRight, MessageSquare, Send, ShieldCheck, RotateCcw, Star, DollarSign, FileText, Filter, Timer, TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { getCategoryColor } from "../junior-pro/BiddingModal";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { ImageUpload } from "../../components/ui/image-upload";
@@ -21,7 +21,7 @@ import {
 } from "../../components/ui/dialog";
 
 import { Calendar } from "../../components/ui/calendar";
-import { fetchUsersByIds, fetchCompanyProfile } from "../../services/api";
+import { fetchUsersByIds, fetchCompanyProfile, aiFindBestMatch } from "../../services/api";
 import type { User, CompanyProfile } from "../../services/api";
 
 
@@ -61,6 +61,10 @@ export default function TalentBridge() {
     const [category, setCategory] = useState<"Design" | "Development" | "Writing" | "Social Media" | "Video/Animation" | "Marketing" | "Miscellaneous">("Miscellaneous");
     const [price, setPrice] = useState("");
     const [date, setDate] = useState<Date | undefined>(new Date());
+
+    // AI Best Match State
+    const [bestMatchResult, setBestMatchResult] = useState<Record<string, { rankings: Array<{ studentId: string; percentage: number; reason: string }>; bestMatchId: string }>>({});
+    const [bestMatchLoading, setBestMatchLoading] = useState<Record<string, boolean>>({});
 
     // Review Room State
     const [revisionModalBountyId, setRevisionModalBountyId] = useState<string | null>(null);
@@ -524,7 +528,36 @@ export default function TalentBridge() {
                                     {/* Bids / Proposals with Counter Offer */}
                                     {bounty.bids.length > 0 && (
                                         <div className="space-y-3">
-                                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Proposals ({bounty.bids.length})</p>
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Proposals ({bounty.bids.length})</p>
+                                                {bounty.bids.length >= 1 && (bounty.status === "OPEN" || bounty.status === "BIDDING") && (
+                                                    bestMatchResult[bounty.id] ? (
+                                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#356DDA] text-white text-[10px] font-bold uppercase tracking-wider">
+                                                            <Sparkles className="w-3 h-3" />
+                                                            AI Ranked
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={async () => {
+                                                                setBestMatchLoading(prev => ({ ...prev, [bounty.id]: true }));
+                                                                try {
+                                                                    const res = await aiFindBestMatch(bounty.id);
+                                                                    setBestMatchResult(prev => ({ ...prev, [bounty.id]: res }));
+                                                                } catch (err) {
+                                                                    console.error('Best match failed:', err);
+                                                                } finally {
+                                                                    setBestMatchLoading(prev => ({ ...prev, [bounty.id]: false }));
+                                                                }
+                                                            }}
+                                                            disabled={bestMatchLoading[bounty.id]}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all bg-[#356DDA] text-white hover:bg-[#2563EB] disabled:opacity-50"
+                                                        >
+                                                            {bestMatchLoading[bounty.id] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                            {bestMatchLoading[bounty.id] ? "Analyzing..." : "Find Best Match"}
+                                                        </button>
+                                                    )
+                                                )}
+                                            </div>
                                             {bounty.bids.map((bid) => {
                                                 const bidKey = `${bounty.id}__${bid.studentId}`;
                                                 const isCounterOfferOpen = counterOfferBidKey === bidKey;
@@ -534,7 +567,14 @@ export default function TalentBridge() {
                                                 const bidAvatar = profile?.avatarUrl ?? bid.studentAvatarUrl;
 
                                                 return (
-                                                    <div key={bid.studentId} className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
+                                                    <div key={bid.studentId} className={`p-4 rounded-xl border space-y-3 ${bestMatchResult[bounty.id]?.bestMatchId === bid.studentId ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200' : 'bg-slate-50 border-slate-100'}`}>
+                                                        {/* Best Match Badge */}
+                                                        {bestMatchResult[bounty.id]?.bestMatchId === bid.studentId && (
+                                                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#356DDA] text-white text-[10px] font-bold uppercase tracking-wider w-fit">
+                                                                <Sparkles className="w-3 h-3" />
+                                                                Best Match
+                                                            </div>
+                                                        )}
                                                         {/* Bid info row */}
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center gap-3">
@@ -548,7 +588,7 @@ export default function TalentBridge() {
                                                                 <div>
                                                                     <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
                                                                         {bidName}
-                                                                        <button 
+                                                                        <button
                                                                             onClick={() => setProfileModalStudentId(bid.studentId)}
                                                                             className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline cursor-pointer bg-blue-50 px-2 py-0.5 rounded-full"
                                                                         >
@@ -559,6 +599,12 @@ export default function TalentBridge() {
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-3">
+                                                                {bestMatchResult[bounty.id]?.rankings?.find(r => r.studentId === bid.studentId) && (
+                                                                    <div className="text-center px-3 py-1 bg-blue-50 rounded-lg" title={bestMatchResult[bounty.id].rankings.find(r => r.studentId === bid.studentId)?.reason}>
+                                                                        <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">AI Match</p>
+                                                                        <p className="text-base font-black text-blue-600">{bestMatchResult[bounty.id].rankings.find(r => r.studentId === bid.studentId)?.percentage}%</p>
+                                                                    </div>
+                                                                )}
                                                                 <div className="text-center px-3 py-1 bg-emerald-50 rounded-lg">
                                                                     <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Score</p>
                                                                     <p className="text-base font-black text-emerald-600">{bid.score || 'N/A'}</p>

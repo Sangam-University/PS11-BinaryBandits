@@ -23,4 +23,8 @@ export const config = {
     region: process.env.AWS_REGION || 'us-east-1',
     s3BucketName: process.env.AWS_S3_BUCKET_NAME || '',
   },
+
+  github: {
+    token: process.env.GITHUB_TOKEN || '',
+  },
 };

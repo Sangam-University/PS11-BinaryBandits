@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { useBountyStore } from "../../store/useBountyStore";
 import { useAuthStore } from "../../store/useAuthStore";
-import { Hexagon, Clock, MapPin, ArrowRight, Filter } from "lucide-react";
+import { Hexagon, Clock, MapPin, ArrowRight, Filter, Sparkles, Loader2 } from "lucide-react";
 import type { Bounty } from "../../services/api";
-import { formatTimeRemaining } from "../../services/api";
+import { formatTimeRemaining, aiGetMatchPercentage } from "../../services/api";
 
 import { Button } from "../../components/ui/button";
 import { BiddingModal, getCategoryColor } from "./BiddingModal";
@@ -22,6 +22,11 @@ export default function JobBoard() {
     const [selectedTheme, setSelectedTheme] = useState<{ bg: string, text: string } | null>(null);
     const [isBiddingModalOpen, setIsBiddingModalOpen] = useState(false);
 
+    // Match % State
+    const [matchResults, setMatchResults] = useState<Record<string, { percentage: number; reason: string }>>({});
+    const [matchLoading, setMatchLoading] = useState<Record<string, boolean>>({});
+    const [matchErrors, setMatchErrors] = useState<Record<string, string>>({});
+
     useEffect(() => {
         loadBounties();
     }, [loadBounties]);
@@ -36,6 +41,22 @@ export default function JobBoard() {
         if (!user) return;
         await placeBid(bountyId, bidData);
         setIsBiddingModalOpen(false);
+    };
+
+    const handleMatchPercentage = async (e: React.MouseEvent, bountyId: string) => {
+        e.stopPropagation();
+        if (matchResults[bountyId] || matchLoading[bountyId]) return;
+        setMatchLoading(prev => ({ ...prev, [bountyId]: true }));
+        setMatchErrors(prev => ({ ...prev, [bountyId]: "" }));
+        try {
+            const result = await aiGetMatchPercentage(bountyId);
+            setMatchResults(prev => ({ ...prev, [bountyId]: result }));
+        } catch (err: any) {
+            console.error('Match % failed:', err);
+            setMatchErrors(prev => ({ ...prev, [bountyId]: err?.response?.data?.error || "Failed. Try again." }));
+        } finally {
+            setMatchLoading(prev => ({ ...prev, [bountyId]: false }));
+        }
     };
 
     // Derived State
@@ -119,7 +140,7 @@ export default function JobBoard() {
                                     {bounty.description}
                                 </p>
 
-                                <div className="flex items-center justify-between text-sm font-bold border-t border-black/10 pt-6 pb-6 mt-6 text-black">
+                                <div className="flex items-center justify-between text-sm font-bold border-t border-black/10 pt-6 pb-4 mt-6 text-black">
                                     <div className="flex items-center">
                                         <Clock className="w-4 h-4 mr-2" />
                                         <span>{formatTimeRemaining(bounty.deadline)} LEFT</span>
@@ -128,6 +149,34 @@ export default function JobBoard() {
                                         <MapPin className="w-4 h-4 mr-2" />
                                         <span className="uppercase">Remote</span>
                                     </div>
+                                </div>
+
+                                {/* AI Match % Button */}
+                                <div className="pb-4">
+                                    {matchResults[bounty.id] ? (
+                                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-black text-white" title={matchResults[bounty.id].reason}>
+                                            <Sparkles className="w-3.5 h-3.5" />
+                                            <span className="text-xs font-bold uppercase tracking-wider">{matchResults[bounty.id].percentage}% Match</span>
+                                            <span className="text-[9px] opacity-60 truncate flex-1">{matchResults[bounty.id].reason}</span>
+                                        </div>
+                                    ) : matchErrors[bounty.id] ? (
+                                        <button
+                                            onClick={(e) => { setMatchErrors(prev => ({ ...prev, [bounty.id]: "" })); handleMatchPercentage(e, bounty.id); }}
+                                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all bg-red-500/20 text-red-800 hover:bg-red-500/30"
+                                        >
+                                            <Sparkles className="w-3.5 h-3.5" />
+                                            {matchErrors[bounty.id]} — Tap to retry
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={(e) => handleMatchPercentage(e, bounty.id)}
+                                            disabled={matchLoading[bounty.id]}
+                                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all bg-black/10 hover:bg-black hover:text-white text-black disabled:opacity-50"
+                                        >
+                                            {matchLoading[bounty.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                            {matchLoading[bounty.id] ? "Calculating..." : "See Match %"}
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center justify-between">
